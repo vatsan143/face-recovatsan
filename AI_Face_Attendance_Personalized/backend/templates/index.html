@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Real-Time AI Attendance</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>📸 Real-Time Face Attendance</h1>
+  <div class="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <p id="statusMsg">Loading camera...</p>
+    <button id="exportBtn">📂 Export Attendance</button>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const statusMsg = document.getElementById("statusMsg");
+
+    // Access webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        statusMsg.textContent = "Camera active - Detecting faces...";
+        startDetection();
+      })
+      .catch(err => {
+        statusMsg.textContent = "Camera access denied.";
+      });
+
+    // Capture and send frame every 1s
+    async function startDetection() {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      setInterval(async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = canvas.toDataURL("image/jpeg");
+
+        const res = await fetch("/detect_face", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imgData })
+        });
+
+        const data = await res.json();
+        if (data.status === "recognized") {
+          statusMsg.textContent = `✅ Marked for ${data.name}`;
+        } else if (data.status === "unknown") {
+          statusMsg.textContent = "❌ Unknown face";
+        } else {
+          statusMsg.textContent = "⏳ Scanning...";
+        }
+      }, 1000);
+    }
+
+    document.getElementById("exportBtn").onclick = () => {
+      window.location = "/export_attendance";
+    };
+  </script>
+</body>
+</html>

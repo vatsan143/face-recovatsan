@@ -1,0 +1,1 @@
+export default function AttendanceUpload(){return <div>AttendanceUpload</div>}
